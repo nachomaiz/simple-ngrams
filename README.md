@@ -4,8 +4,6 @@ N-grams are collections of n words that appear together within a text.
 
 With this script you can split the text into n-grams of specified sizes and get their frequencies in the whole text.
 
-To run this script, paste the txt file into this folder and open a terminal with an activated python environment.
-
 The script does not mix n-grams across lines of text.
 
 Make sure you have installed the two required packages:
@@ -20,7 +18,7 @@ stopwords
 punkt
 ```
 
-To run this script, navigate to this folder in the terminal and run the following:
+To run this script, navigate to this folder in the terminal within an activated python environment and run the following:
 ```
 python ngrams.py text-to-analyze.txt min-size max-size
 ```
