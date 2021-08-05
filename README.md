@@ -1,6 +1,6 @@
 # Find N-grams in text file
 
-N-grams are collections of n words that appear together within a text.
+N-grams are collections of n number of words that appear together within a text.
 
 With this script you can split the text into n-grams of specified sizes and get their frequencies in the whole text.
 
@@ -24,8 +24,8 @@ python ngrams.py text-to-analyze.txt min-size max-size
 ```
 
 Optional arguments:
-- -s : clean stopwords (is, and, the, a, to...)
-- -t : return a clean string instead of tuples of words
+- `-s` : clean stopwords (is, and, the, a, to...)
+- `-t` : return a clean string instead of tuples of words
 
 This would look like this:
 ```
@@ -39,4 +39,9 @@ Finally, the script will save the result as an Excel file:
 | 1     | ('c','d')     | 4    | 2          |
 | 2     | ('e','f','g') | 3    | 3          |
 
-It's possible that, for now, Excel will throw an error when opening if `-t` is passed and any n-gram starts with `=`, `+` or `-`. Excel will treat it as a function.
+If you use `-t` the result will look like this:
+|       | n-gram        | freq | word_count |
+|-------|---------------|------|------------|
+| 0     | a b           | 5    | 2          |
+
+It's possible that Excel will throw an error when opening if `-t` is passed and any n-gram starts with `=`, `+` or `-`: Excel will treat it as a function.
