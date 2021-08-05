@@ -15,11 +15,11 @@ def ngram_frequency(
 ) -> pd.DataFrame:
 
     n_grams = []
-    stop_words = stopwords.words("english")
     for i in range(n_min, n_max + 1):
         for line in text:
             for sentence in sent_tokenize(line):
                 if clean_stopwords:
+                    stop_words = stopwords.words("english")
                     token = [
                         word.casefold()
                         for word in word_tokenize(sentence)
