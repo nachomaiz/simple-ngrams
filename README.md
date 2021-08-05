@@ -23,14 +23,20 @@ To run this script, navigate to this folder in the terminal within an activated 
 python ngrams.py text-to-analyze.txt min-size max-size
 ```
 
+Optional arguments:
+- -s : clean stopwords (is, and, the, a, to...)
+- -t : return a clean string instead of tuples of words
+
 This would look like this:
 ```
-python ngrams.py testtweets.txt 2 5
+python ngrams.py testtweets.txt 2 5 -s -t
 ```
 
-And it will save an Excel file with the results:
+Finally, the script will save the result as an Excel file:
 |       | n-gram        | freq | word_count |
 |-------|---------------|------|------------|
 | 0     | ('a','b')     | 5    | 2          |
 | 1     | ('c','d')     | 4    | 2          |
 | 2     | ('e','f','g') | 3    | 3          |
+
+It's possible that, for now, Excel will throw an error when opening if `-t` is passed and any n-gram starts with `=`, `+` or `-`. Excel will treat it as a function.
