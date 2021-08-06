@@ -1,18 +1,40 @@
-from typing import List
+from typing import List, Dict, Tuple, NamedTuple
 from nltk import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
 from nltk.util import ngrams
-from collections import Counter
+from collections import Counter, namedtuple
 import pandas as pd
 import sys
 
+import cli_msg
+
+
+def parse_args(argv: List[str]) -> Tuple[NamedTuple, Dict[str, str]]:
+    args = [i for i in argv if not i.startswith("-")]
+    kwargs = [i for i in argv if i.startswith("-")]
+
+    if "-h" in kwargs:
+        print(cli_msg.help)
+        sys.exit()
+    elif len(args) != 4 or len(kwargs) > 2:
+        print(cli_msg.usage)
+        sys.exit()
+    
+    Args = namedtuple('Args', ['text', 'n_min', 'n_max'])
+    args = Args(str(args[1]), int(args[2]), int(args[3]))
+    kwargs = {
+        "clean_stopwords" : True if "-s" in kwargs else False,
+        "tuples" : True if "-t" in kwargs else False
+    }
+
+    return args, kwargs
 
 def ngram_frequency(
     text: List[str],
     n_min: int,
     n_max: int,
     clean_stopwords: bool = False,
-    clean_text: bool = False,
+    tuples: bool = False,
 ) -> pd.DataFrame:
     """Find n-grams in text.
 
@@ -53,36 +75,25 @@ def ngram_frequency(
     counts = Counter(x for x in n_grams)  # stores n-grams and calculates their frequency
     res = pd.DataFrame(counts.most_common(), columns=["n-gram", "freq"])
     res["word_count"] = res["n-gram"].apply(len)
-    if clean_text:
+    if not tuples:
         res["n-gram"] = res["n-gram"].str.join(" ")
     return res
 
 
-def main():
-    args = [i for i in sys.argv if not i.startswith("-")]
-    kwargs = [i for i in sys.argv if i.startswith("-")]
-    if len(args) != 4:
-        raise SyntaxError(
-            "Correct syntax: python ngrams.py path-to-text.txt min-size(integer) max-size(integer) (-s and/or -t optional)"
-        )
+def main(argv: List[str]):
+    args, kwargs = parse_args(argv)
 
-    file = str(args[1])  # 0th arg is this .py file
-    n_min = int(args[2])
-    n_max = int(args[3])
-    clean_stopwords = True if "-s" in kwargs else False
-    clean_text = True if "-t" in kwargs else False
+    print(f"Reading {args.text}...")
 
-    print(f"Reading {file}...")
-
-    with open(file, encoding="utf8") as f:
+    with open(args.text, encoding="utf8") as f:
         text = f.readlines()  # split text and load into a list of lines
 
     print(f"Processing file with {len(text)} lines...")
 
-    result = ngram_frequency(text, n_min, n_max, clean_stopwords, clean_text)
+    result = ngram_frequency(text, *args[1:], **kwargs)
 
     print(
-        f"Found {result.shape[0]} n-grams with sizes {n_min} to {n_max}. Saving to Excel..."
+        f"Found {result.shape[0]} n-grams with sizes {args.n_min} to {args.n_max}. Saving to Excel..."
     )
 
     result.to_excel("result.xlsx", encoding="utf8")
@@ -90,4 +101,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main(sys.argv))
