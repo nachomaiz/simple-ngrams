@@ -1,0 +1,25 @@
+﻿,n-gram,freq,word_count
+0,"('this', 'is')",2,2
+1,"('is', 'a')",2,2
+2,"('a', 'test')",2,2
+3,"('this', 'is', 'a')",2,3
+4,"('is', 'a', 'test')",2,3
+5,"('test', '.')",1,2
+6,"('for', 'n-gram')",1,2
+7,"('n-gram', 'frequencies')",1,2
+8,"('frequencies', '.')",1,2
+9,"('test', 'that')",1,2
+10,"('that', 'should')",1,2
+11,"('should', 'support')",1,2
+12,"('support', 'multiple')",1,2
+13,"('multiple', 'lines')",1,2
+14,"('lines', '.')",1,2
+15,"('a', 'test', '.')",1,3
+16,"('for', 'n-gram', 'frequencies')",1,3
+17,"('n-gram', 'frequencies', '.')",1,3
+18,"('a', 'test', 'that')",1,3
+19,"('test', 'that', 'should')",1,3
+20,"('that', 'should', 'support')",1,3
+21,"('should', 'support', 'multiple')",1,3
+22,"('support', 'multiple', 'lines')",1,3
+23,"('multiple', 'lines', '.')",1,3
