@@ -1,5 +1,10 @@
 /inputs
-/result.xlsx
+/result
 /result.csv
 __pycache__/
 .vscode
+
+# Unit test / coverage
+.coverage
+.coverage.*
+/htmlcov

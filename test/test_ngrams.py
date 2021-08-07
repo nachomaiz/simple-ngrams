@@ -1,10 +1,16 @@
+import io
+import sys
+import os
 import unittest
+import unittest.mock
 from pandas.testing import assert_frame_equal
+from tempfile import mkdtemp
 
 import pandas as pd
 import ast
 
-from ngrams import ngram_frequency
+import ngrams
+import cli_msg
 
 test_text = [
     "This is a test. For n-gram frequencies.\n",
@@ -12,63 +18,129 @@ test_text = [
 ]
 
 
-class TestNgrams(unittest.TestCase):
+class _AssertStdoutContext:
+    def __init__(self, testcase, expected):
+        self.testcase = testcase
+        self.expected = expected
+        self.captured = io.StringIO()
+
+    def __enter__(self):
+        sys.stdout = self.captured
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        sys.stdout = sys.__stdout__
+        captured = self.captured.getvalue()
+        self.testcase.assertEqual(captured, self.expected)
+
+
+class ScriptTests(unittest.TestCase):
+    def test_parse_args(self) -> None:
+        args, kwargs = ngrams.parse_args("ngrams.py text.txt 1 2 -s -t".split())
+        self.assertEqual(args.path, "text.txt")
+        self.assertEqual(args.n_min, 1)
+        self.assertEqual(args.n_max, 2)
+        self.assertTrue(kwargs["clean_stopwords"])
+        self.assertTrue(kwargs["tuples"])
+
+    def test_help(self) -> None:
+        with self.assertRaises(SystemExit) as cm:
+            ngrams.parse_args("ngrams.py -h".split())
+        self.assertEqual(cm.exception.args[0], cli_msg.help)
+
+    def test_usage(self) -> None:
+        with self.assertRaises(SystemExit) as cm:
+            ngrams.parse_args(["ngrams.py"])
+        self.assertEqual(cm.exception.args[0], cli_msg.usage)
+
+    def test_main(self) -> None:
+        with self.assertRaises(SystemExit):
+            ngrams.main(["ngrams.py"])
+
+    def test_nonint_input(self) -> None:
+        with self.assertRaises(ValueError):
+            ngrams.parse_args("ngrams.py test.txt a b".split())
+
+
+class FileTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.path = "test/test_text.txt"
+        self.test_dir = mkdtemp()
+        self.test_df = pd.DataFrame({"Numbers": [1, 2, 3, 4, 5]})
+        self.args, _ = ngrams.parse_args("ngrams.py text.txt 1 2".split())
+
+    def assertStdout(self, expected_output):
+        return _AssertStdoutContext(self, expected_output)
+
+    def assertPrints(self, *expected_output):
+        expected_output = "\n".join(expected_output) + "\n"
+        return _AssertStdoutContext(self, expected_output)
+
+    def test_open_file(self):
+        mock_open = unittest.mock.mock_open(read_data="".join(test_text))
+        with unittest.mock.patch("builtins.open", mock_open):
+            with self.assertStdout("Reading test/test_text.txt...\n"):
+                result = ngrams.open_file(self.path)
+            self.assertEqual(result, test_text)
+
+    def test_save_file(self):
+        msg_a = "Found 5 n-grams with sizes 1 to 2. Saving to Excel..."
+        with unittest.mock.patch.object(self.test_df, "to_excel") as mock_to_excel:
+            with self.assertPrints(msg_a, "Done"):
+                ngrams.save_file(self.test_df, self.args, self.test_dir)
+            filepath = f"{self.test_dir}\\ngrams_{self.args.path}_{self.args.n_min}-{self.args.n_max}.xlsx"
+            mock_to_excel.assert_called_with(filepath, encoding="utf8")
+
+    def test_make_dir(self):
+        path = "".join([self.test_dir, "testdir"])
+        ngrams.make_dir(path)
+        self.assertTrue(os.path.exists(path))
+
+
+class NgramCommonTests(object):
     def setUp(self) -> None:
         self.target_data = pd.read_csv(
-            "test/test_result.csv",
-            index_col=0,
-            converters={"n-gram": ast.literal_eval}
+            self.path, index_col=0, converters={"n-gram": ast.literal_eval}
         )
 
     def tearDown(self) -> None:
+        self.args = None
+        self.path = None
         self.target_data = None
 
-    def test_tuple_ngrams(self) -> None:
-        """
-        Test standard command with no optional args. Should return df with tuples.
-        """
-        result = ngram_frequency(test_text, 2, 3)
-
-        assert_frame_equal(result, self.target_data)
-
-    def test_str_ngrams(self) -> None:
-        """
-        Test standard command with string arg. Should return df with strings.
-        """
-        result = ngram_frequency(test_text, 2, 3, clean_text=True)
+    def test_ngrams(self) -> None:
+        result = ngrams.ngram_frequency(*self.args[:-1])
         self.target_data["n-gram"] = self.target_data["n-gram"].agg(" ".join)
+        assert_frame_equal(result, self.target_data)
 
+    def test_ngrams_tuples(self) -> None:
+        result = ngrams.ngram_frequency(*self.args)
         assert_frame_equal(result, self.target_data)
 
 
-class TestNgramsStopword(unittest.TestCase):
+class TestRaw(NgramCommonTests, unittest.TestCase):
+    """Test output with stopwords"""
+
     def setUp(self) -> None:
-        self.target_data = pd.read_csv(
-            "test/test_stopword_result.csv",
-            index_col=0,
-            converters={"n-gram": ast.literal_eval},
-        )
+        self.path = "test/test_result.csv"
+        self.args = [test_text, 2, 3, False, True]
+        super().setUp()
 
     def tearDown(self) -> None:
-        self.target_data = None
+        super().tearDown()
 
-    def test_tuple_ngrams_stopword(self) -> None:
-        """
-        Test standard command with stopwords arg. Should return df with tuples.
-        """
-        result = ngram_frequency(test_text, 2, 3, clean_stopwords=True)
 
-        assert_frame_equal(result, self.target_data)
+class TestsStopwords(NgramCommonTests, unittest.TestCase):
+    """Test output without stopwords"""
 
-    def test_str_ngrams_stopword(self) -> None:
-        """
-        Test standard command with stopwords and string args. Should return df with strings.
-        """
-        result = ngram_frequency(test_text, 2, 3, clean_stopwords=True, clean_text=True)
-        self.target_data["n-gram"] = self.target_data["n-gram"].agg(" ".join)
+    def setUp(self) -> None:
+        self.path = "test/test_stopword_result.csv"
+        self.args = [test_text, 2, 3, True, True]
+        super().setUp()
 
-        assert_frame_equal(result, self.target_data)
+    def tearDown(self) -> None:
+        super().tearDown()
 
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main()  # pragma: no cover
