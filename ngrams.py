@@ -11,6 +11,7 @@ import cli_msg
 
 __doc__ = cli_msg.help
 
+
 def parse_args(argv: List[str]) -> Tuple[NamedTuple, Dict[str, str]]:
     args = [i for i in argv if not i.startswith("-")]
     kwargs = [i for i in argv if i.startswith("-")]
@@ -19,15 +20,16 @@ def parse_args(argv: List[str]) -> Tuple[NamedTuple, Dict[str, str]]:
         sys.exit(__doc__)
     elif len(args) != 4 or len(kwargs) > 2:
         sys.exit(cli_msg.usage)
-    
-    Args = namedtuple('Args', ['path', 'n_min', 'n_max'])
+
+    Args = namedtuple("Args", ["path", "n_min", "n_max"])
     args = Args(str(args[1]), int(args[2]), int(args[3]))
     kwargs = {
-        "clean_stopwords" : True if "-s" in kwargs else False,
-        "tuples" : True if "-t" in kwargs else False
+        "clean_stopwords": True if "-s" in kwargs else False,
+        "tuples": True if "-t" in kwargs else False,
     }
 
     return args, kwargs
+
 
 def open_file(path: str) -> List[str]:
     print(f"Reading {path}...")
@@ -35,16 +37,19 @@ def open_file(path: str) -> List[str]:
     with open(path, encoding="utf8") as f:
         return f.readlines()  # split text and load into a list of lines
 
+
 def save_file(df: pd.DataFrame, args: NamedTuple, dir: str = "result") -> None:
     print(
         f"Found {df.shape[0]} n-grams with sizes {args.n_min} to {args.n_max}. Saving to Excel..."
     )
 
-    _ , filename = os.path.split(args.path)
+    _, filename = os.path.split(args.path)
 
-    df.to_excel(f"{dir}\\ngrams_{filename}_{args.n_min}-{args.n_max}.xlsx", encoding="utf8")
-    print('Done')
-    
+    df.to_excel(
+        f"{dir}\\ngrams_{filename}_{args.n_min}-{args.n_max}.xlsx", encoding="utf8"
+    )
+    print("Done")
+
 
 def ngram_frequency(
     text: List[str],
@@ -89,7 +94,7 @@ def ngram_frequency(
                 ]
                 ngram = list(ngrams(token, i))
                 n_grams.extend(ngram)  # add n-grams to final list
-    counts = Counter(x for x in n_grams)  # stores n-grams and calculates their frequency
+    counts = Counter(x for x in n_grams)  # stores & calculates n-gram frequency
     res = pd.DataFrame(counts.most_common(), columns=["n-gram", "freq"])
     res["word_count"] = res["n-gram"].apply(len)
     if not tuples:
