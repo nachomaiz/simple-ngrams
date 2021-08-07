@@ -38,12 +38,19 @@ def open_file(path: str) -> List[str]:
         return f.readlines()  # split text and load into a list of lines
 
 
+def make_dir(dir: str) -> None:
+    if not os.path.exists(dir):
+        os.mkdir(dir)
+
+
 def save_file(df: pd.DataFrame, args: NamedTuple, dir: str = "result") -> None:
     print(
         f"Found {df.shape[0]} n-grams with sizes {args.n_min} to {args.n_max}. Saving to Excel..."
     )
 
     _, filename = os.path.split(args.path)
+
+    make_dir(dir)
 
     df.to_excel(
         f"{dir}\\ngrams_{filename}_{args.n_min}-{args.n_max}.xlsx", encoding="utf8"

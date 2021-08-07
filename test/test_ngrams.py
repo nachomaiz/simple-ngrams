@@ -1,5 +1,6 @@
 import io
 import sys
+import os
 import unittest
 import unittest.mock
 from pandas.testing import assert_frame_equal
@@ -71,7 +72,6 @@ class FileTests(unittest.TestCase):
     def assertStdout(self, expected_output):
         return _AssertStdoutContext(self, expected_output)
 
-    # as a bonus, this syntactical sugar becomes possible:
     def assertPrints(self, *expected_output):
         expected_output = "\n".join(expected_output) + "\n"
         return _AssertStdoutContext(self, expected_output)
@@ -83,14 +83,18 @@ class FileTests(unittest.TestCase):
                 result = ngrams.open_file(self.path)
             self.assertEqual(result, test_text)
 
-    def test_write_file(self):
+    def test_save_file(self):
+        msg_a = "Found 5 n-grams with sizes 1 to 2. Saving to Excel..."
         with unittest.mock.patch.object(self.test_df, "to_excel") as mock_to_excel:
-            with self.assertPrints(
-                "Found 5 n-grams with sizes 1 to 2. Saving to Excel...", "Done"
-            ):
+            with self.assertPrints(msg_a, "Done"):
                 ngrams.save_file(self.test_df, self.args, self.test_dir)
             filepath = f"{self.test_dir}\\ngrams_{self.args.path}_{self.args.n_min}-{self.args.n_max}.xlsx"
             mock_to_excel.assert_called_with(filepath, encoding="utf8")
+
+    def test_make_dir(self):
+        path = "".join([self.test_dir, "testdir"])
+        ngrams.make_dir(path)
+        self.assertTrue(os.path.exists(path))
 
 
 class NgramCommonTests(object):
