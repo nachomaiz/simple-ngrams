@@ -5,22 +5,22 @@ from nltk.util import ngrams
 from collections import Counter, namedtuple
 import pandas as pd
 import sys
+import os
 
 import cli_msg
 
+__doc__ = cli_msg.help
 
 def parse_args(argv: List[str]) -> Tuple[NamedTuple, Dict[str, str]]:
     args = [i for i in argv if not i.startswith("-")]
     kwargs = [i for i in argv if i.startswith("-")]
 
     if "-h" in kwargs:
-        print(cli_msg.help)
-        sys.exit()
+        sys.exit(__doc__)
     elif len(args) != 4 or len(kwargs) > 2:
-        print(cli_msg.usage)
-        sys.exit()
+        sys.exit(cli_msg.usage)
     
-    Args = namedtuple('Args', ['text', 'n_min', 'n_max'])
+    Args = namedtuple('Args', ['path', 'n_min', 'n_max'])
     args = Args(str(args[1]), int(args[2]), int(args[3]))
     kwargs = {
         "clean_stopwords" : True if "-s" in kwargs else False,
@@ -28,6 +28,23 @@ def parse_args(argv: List[str]) -> Tuple[NamedTuple, Dict[str, str]]:
     }
 
     return args, kwargs
+
+def open_file(path: str) -> List[str]:
+    print(f"Reading {path}...")
+
+    with open(path, encoding="utf8") as f:
+        return f.readlines()  # split text and load into a list of lines
+
+def save_file(df: pd.DataFrame, args: NamedTuple, dir: str = "result") -> None:
+    print(
+        f"Found {df.shape[0]} n-grams with sizes {args.n_min} to {args.n_max}. Saving to Excel..."
+    )
+
+    _ , filename = os.path.split(args.path)
+
+    df.to_excel(f"{dir}\\ngrams_{filename}_{args.n_min}-{args.n_max}.xlsx", encoding="utf8")
+    print('Done')
+    
 
 def ngram_frequency(
     text: List[str],
@@ -83,21 +100,13 @@ def ngram_frequency(
 def main(argv: List[str]):
     args, kwargs = parse_args(argv)
 
-    print(f"Reading {args.text}...")
-
-    with open(args.text, encoding="utf8") as f:
-        text = f.readlines()  # split text and load into a list of lines
+    text = open_file(args.path)
 
     print(f"Processing file with {len(text)} lines...")
 
     result = ngram_frequency(text, *args[1:], **kwargs)
 
-    print(
-        f"Found {result.shape[0]} n-grams with sizes {args.n_min} to {args.n_max}. Saving to Excel..."
-    )
-
-    result.to_excel("result.xlsx", encoding="utf8")
-    print("Done")
+    save_file(result, args)
 
 
 if __name__ == "__main__":

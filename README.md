@@ -52,4 +52,13 @@ If you use `-t` the resulting n-grams will be converted to a single string:
 |-------|---------------|------|------------|
 | 0     | a b c d       | 3    | 4          |
 
-It's possible that Excel will throw an error when opening if `-t` is passed and any n-gram starts with `=`, `+` or `-`: Excel will treat it as a function.
+It's possible that Excel will throw an error when opening if `-t` is passed and any n-gram starts with `=`, `+` or `-`.
+
+Excel will treat it as a function.
+
+## Testing
+
+For testing, open or direct the terminal at the main folder and run:
+```
+python -m unittest
+```
