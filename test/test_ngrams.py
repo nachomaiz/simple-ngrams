@@ -1,13 +1,12 @@
+from pandas.testing import assert_frame_equal
+from tempfile import mkdtemp
+import unittest
+import unittest.mock
+import pandas as pd
+import ast
 import io
 import sys
 import os
-import unittest
-import unittest.mock
-from pandas.testing import assert_frame_equal
-from tempfile import mkdtemp
-
-import pandas as pd
-import ast
 
 import ngrams
 import cli_msg
@@ -19,7 +18,7 @@ test_text = [
 
 
 class _AssertStdoutContext:
-    def __init__(self, testcase, expected):
+    def __init__(self, testcase: unittest.TestCase, expected: str):
         self.testcase = testcase
         self.expected = expected
         self.captured = io.StringIO()
@@ -34,14 +33,20 @@ class _AssertStdoutContext:
         self.testcase.assertEqual(captured, self.expected)
 
 
+class TestCasePrint(unittest.TestCase):
+    def assertStdout(self, expected_output):
+        return _AssertStdoutContext(self, expected_output)
+
+    def assertPrints(self, *expected_output):
+        expected_output = "\n".join(expected_output) + "\n"
+        return _AssertStdoutContext(self, expected_output)
+
+
 class ScriptTests(unittest.TestCase):
     def test_parse_args(self) -> None:
         args, kwargs = ngrams.parse_args("ngrams.py text.txt 1 2 -s -t".split())
-        self.assertEqual(args.path, "text.txt")
-        self.assertEqual(args.n_min, 1)
-        self.assertEqual(args.n_max, 2)
-        self.assertTrue(kwargs["clean_stopwords"])
-        self.assertTrue(kwargs["tuples"])
+        expected_output = ["text.txt", 1, 2, True, True]
+        self.assertEqual(list(args) + list(kwargs.values()), expected_output)
 
     def test_help(self) -> None:
         with self.assertRaises(SystemExit) as cm:
@@ -62,37 +67,29 @@ class ScriptTests(unittest.TestCase):
             ngrams.parse_args("ngrams.py test.txt a b".split())
 
 
-class FileTests(unittest.TestCase):
+class FileTests(TestCasePrint):
     def setUp(self) -> None:
-        self.path = "test/test_text.txt"
-        self.test_dir = mkdtemp()
-        self.test_df = pd.DataFrame({"Numbers": [1, 2, 3, 4, 5]})
+        self.dir = mkdtemp()
+        self.df = pd.DataFrame({"Numbers": [1, 2, 3, 4, 5]})
         self.args, _ = ngrams.parse_args("ngrams.py text.txt 1 2".split())
-
-    def assertStdout(self, expected_output):
-        return _AssertStdoutContext(self, expected_output)
-
-    def assertPrints(self, *expected_output):
-        expected_output = "\n".join(expected_output) + "\n"
-        return _AssertStdoutContext(self, expected_output)
 
     def test_open_file(self):
         mock_open = unittest.mock.mock_open(read_data="".join(test_text))
         with unittest.mock.patch("builtins.open", mock_open):
-            with self.assertStdout("Reading test/test_text.txt...\n"):
-                result = ngrams.open_file(self.path)
+            with self.assertStdout("Reading test.txt...\n"):
+                result = ngrams.open_file("test.txt")
             self.assertEqual(result, test_text)
 
     def test_save_file(self):
-        msg_a = "Found 5 n-grams with sizes 1 to 2. Saving to Excel..."
-        with unittest.mock.patch.object(self.test_df, "to_excel") as mock_to_excel:
+        msg_a = f"Found {self.df.shape[0]} n-grams with sizes {self.args.n_min} to {self.args.n_max}. Saving to Excel..."
+        with unittest.mock.patch.object(self.df, "to_excel") as mock_to_excel:
             with self.assertPrints(msg_a, "Done"):
-                ngrams.save_file(self.test_df, self.args, self.test_dir)
-            filepath = f"{self.test_dir}\\ngrams_{self.args.path}_{self.args.n_min}-{self.args.n_max}.xlsx"
+                ngrams.save_file(self.df, self.args, self.dir)
+            filepath = f"{self.dir}\\ngrams_{self.args.path}_{self.args.n_min}-{self.args.n_max}.xlsx"
             mock_to_excel.assert_called_with(filepath, encoding="utf8")
 
     def test_make_dir(self):
-        path = "".join([self.test_dir, "testdir"])
+        path = "".join([self.dir, "testdir"])
         ngrams.make_dir(path)
         self.assertTrue(os.path.exists(path))
 
@@ -100,12 +97,12 @@ class FileTests(unittest.TestCase):
 class NgramCommonTests(object):
     def setUp(self) -> None:
         self.target_data = pd.read_csv(
-            self.path, index_col=0, converters={"n-gram": ast.literal_eval}
+            self.target_path, index_col=0, converters={"n-gram": ast.literal_eval}
         )
 
     def tearDown(self) -> None:
         self.args = None
-        self.path = None
+        self.target_path = None
         self.target_data = None
 
     def test_ngrams(self) -> None:
@@ -122,7 +119,7 @@ class TestRaw(NgramCommonTests, unittest.TestCase):
     """Test output with stopwords"""
 
     def setUp(self) -> None:
-        self.path = "test/test_result.csv"
+        self.target_path = "test/test_result.csv"
         self.args = [test_text, 2, 3, False, True]
         super().setUp()
 
@@ -134,7 +131,7 @@ class TestsStopwords(NgramCommonTests, unittest.TestCase):
     """Test output without stopwords"""
 
     def setUp(self) -> None:
-        self.path = "test/test_stopword_result.csv"
+        self.target_path = "test/test_stopword_result.csv"
         self.args = [test_text, 2, 3, True, True]
         super().setUp()
 
