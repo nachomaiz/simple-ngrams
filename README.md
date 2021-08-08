@@ -31,7 +31,7 @@ python ngrams.py path-to-text.txt min-size max-size
 
 Optional arguments:
 - `-s` : clean stopwords (is, and, the, a, to...)
-- `-t` : return a clean string instead of tuples of words
+- `-t` : return tuples instead of a clean string of words
 
 This would look like this:
 ```
@@ -54,7 +54,7 @@ If you use `-t` the resulting n-grams will be converted to a single string:
 
 It's possible that Excel will throw an error when opening if `-t` is passed and any n-gram starts with `=`, `+` or `-`.
 
-Excel will treat it as a function.
+Excel will treat those symbols as functions.
 
 ## Testing
 
