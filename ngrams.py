@@ -1,3 +1,22 @@
+"""
+====================
+Find n-grams in text
+====================
+
+Reads text file, finds collections of words (n-grams) that appear together. 
+Collection size is controlled by the min-size and max-size arguments.
+Returns Excel file with n-grams sorted by frequency.
+
+Usage: python -m ngrams [path-to-text.txt] [min-size] [max-size] OPTIONAL[-s -t] HELP[-h]
+
+min-size and max-size must be integers.
+
+Commands:
+-s      Clean stopwords (a, is, the, and...)
+-t      Return tuples of words. Otherwise returns strings
+-h      Show help
+"""
+
 from typing import List, Dict, Tuple, NamedTuple
 from nltk import word_tokenize, sent_tokenize
 from nltk.corpus import stopwords
@@ -7,9 +26,8 @@ import pandas as pd
 import sys
 import os
 
-import cli_msg
 
-__doc__ = cli_msg.help
+usage = "Usage: python -m ngrams [path-to-text.txt] [min-size] [max-size] OPTIONAL[-s -t] HELP[-h]"
 
 
 def parse_args(argv: List[str]) -> Tuple[NamedTuple, Dict[str, str]]:
@@ -19,7 +37,7 @@ def parse_args(argv: List[str]) -> Tuple[NamedTuple, Dict[str, str]]:
     if "-h" in kwargs:
         sys.exit(__doc__)
     elif len(args) != 4 or len(kwargs) > 2:
-        sys.exit(cli_msg.usage)
+        sys.exit(usage)
 
     Args = namedtuple("Args", ["path", "n_min", "n_max"])
     args = Args(str(args[1]), int(args[2]), int(args[3]))
@@ -39,7 +57,7 @@ def open_file(path: str) -> List[str]:
 
 
 def make_dir(dir: str) -> None:
-    if not os.path.exists(dir):
+    if not os.path.isdir(dir):
         os.mkdir(dir)
 
 
@@ -109,7 +127,7 @@ def ngram_frequency(
     return res
 
 
-def main(argv: List[str]):
+def main(argv: List[str]) -> None:
     args, kwargs = parse_args(argv)
 
     text = open_file(args.path)

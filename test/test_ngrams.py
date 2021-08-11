@@ -1,15 +1,12 @@
 from pandas.testing import assert_frame_equal
-from tempfile import mkdtemp
 import unittest
 import unittest.mock
 import pandas as pd
 import ast
 import io
 import sys
-import os
 
 import ngrams
-import cli_msg
 
 test_text = [
     "This is a test. For n-gram frequencies.\n",
@@ -33,7 +30,9 @@ class _AssertStdoutContext:
         self.testcase.assertEqual(captured, self.expected)
 
 
-class TestCasePrint(unittest.TestCase):
+class PrintTestCase(unittest.TestCase):
+    """Enables asserting print to cli."""
+    
     def assertStdout(self, expected_output):
         return _AssertStdoutContext(self, expected_output)
 
@@ -51,12 +50,12 @@ class ScriptTests(unittest.TestCase):
     def test_help(self) -> None:
         with self.assertRaises(SystemExit) as cm:
             ngrams.parse_args("ngrams.py -h".split())
-        self.assertEqual(cm.exception.args[0], cli_msg.help)
+        self.assertEqual(cm.exception.args[0], ngrams.__doc__)
 
     def test_usage(self) -> None:
         with self.assertRaises(SystemExit) as cm:
             ngrams.parse_args(["ngrams.py"])
-        self.assertEqual(cm.exception.args[0], cli_msg.usage)
+        self.assertEqual(cm.exception.args[0], ngrams.usage)
 
     def test_main(self) -> None:
         with self.assertRaises(SystemExit):
@@ -67,31 +66,32 @@ class ScriptTests(unittest.TestCase):
             ngrams.parse_args("ngrams.py test.txt a b".split())
 
 
-class FileTests(TestCasePrint):
+class FileTests(PrintTestCase):
     def setUp(self) -> None:
-        self.dir = mkdtemp()
         self.df = pd.DataFrame({"Numbers": [1, 2, 3, 4, 5]})
         self.args, _ = ngrams.parse_args("ngrams.py text.txt 1 2".split())
+    
+    @unittest.mock.mock_open(read_data="text")
+    def test_open_file(self, mock_open):
+        with self.assertStdout("Reading test.txt...\n"):
+            result = ngrams.open_file("test.txt")
+        mock_open.assert_called_with("test.txt", encoding="utf8")
+        self.assertEqual(result, "text")
 
-    def test_open_file(self):
-        mock_open = unittest.mock.mock_open(read_data="".join(test_text))
-        with unittest.mock.patch("builtins.open", mock_open):
-            with self.assertStdout("Reading test.txt...\n"):
-                result = ngrams.open_file("test.txt")
-            self.assertEqual(result, test_text)
+    @unittest.mock.patch("pandas.DataFrame.to_excel")
+    def test_save_file(self, mock_to_excel):
+        expected = f"Found {self.df.shape[0]} n-grams with sizes {self.args.n_min} to {self.args.n_max}. Saving to Excel..."
+        with self.assertPrints(expected, "Done"):
+            ngrams.save_file(self.df, self.args, "path")
+        filepath = f"path\\ngrams_{self.args.path}_{self.args.n_min}-{self.args.n_max}.xlsx"
+        mock_to_excel.assert_called_with(filepath, encoding="utf8")
 
-    def test_save_file(self):
-        msg_a = f"Found {self.df.shape[0]} n-grams with sizes {self.args.n_min} to {self.args.n_max}. Saving to Excel..."
-        with unittest.mock.patch.object(self.df, "to_excel") as mock_to_excel:
-            with self.assertPrints(msg_a, "Done"):
-                ngrams.save_file(self.df, self.args, self.dir)
-            filepath = f"{self.dir}\\ngrams_{self.args.path}_{self.args.n_min}-{self.args.n_max}.xlsx"
-            mock_to_excel.assert_called_with(filepath, encoding="utf8")
-
-    def test_make_dir(self):
-        path = "".join([self.dir, "testdir"])
-        ngrams.make_dir(path)
-        self.assertTrue(os.path.exists(path))
+    @unittest.mock.patch("ngrams.os.path")
+    @unittest.mock.patch("ngrams.os")
+    def test_make_dir(self, mock_os, mock_path):
+        mock_path.isdir.return_value = False
+        ngrams.make_dir("path")
+        mock_os.mkdir.assert_called_with("path")
 
 
 class NgramCommonTests(object):
